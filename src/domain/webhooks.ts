@@ -6,6 +6,7 @@ import { writeAudit } from './store.ts';
 import type { DomainEvent } from './events.ts';
 import type { Db } from '../db/index.ts';
 import { checkDestination } from './net-guard.ts';
+import { USER_AGENT } from '../core/version.ts';
 
 export type WebhookRow = {
   id: string;
@@ -227,7 +228,7 @@ export async function flushDeliveries(
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'user-agent': 'open-crm-webhooks/1',
+          'user-agent': USER_AGENT,
           'x-open-crm-event': row.event,
           'x-open-crm-delivery': row.id,
           'x-open-crm-timestamp': timestamp,

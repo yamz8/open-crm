@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that you cannot do today? Describe the situation, not the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+      description: Optional. If you have an API shape or UI in mind, sketch it.
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What you do instead today
+      description: Custom fields in `properties`? A script against the API? Nothing?
+  - type: checkboxes
+    id: agents
+    attributes:
+      label: Does this need to work for agents too
+      options:
+        - label: This should be reachable over the API and MCP, not only the web UI

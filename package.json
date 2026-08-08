@@ -1,7 +1,7 @@
 {
   "name": "open-crm",
   "version": "0.1.0",
-  "description": "Self-hosted, open-source CRM built for humans and AI agents.",
+  "description": "Self-hosted, open-source CRM built for humans and AI agents \u2014 REST, MCP, and CLI on one service layer with a reversible audit trail.",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -24,7 +24,10 @@
     "smoke": "node scripts/smoke.mjs",
     "check": "npm run format:check && npm run typecheck && npm run build:web && npm run test",
     "seed": "node src/cli/main.ts seed --demo",
-    "migrate": "node src/cli/main.ts migrate"
+    "migrate": "node src/cli/main.ts migrate",
+    "backup": "node src/cli/main.ts backup",
+    "selfcheck": "node src/cli/main.ts selfcheck",
+    "prepublishOnly": "npm run check"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
@@ -41,5 +44,41 @@
     "esbuild": "^0.28.1",
     "prettier": "^3.9.6",
     "typescript": "^5.9.3"
+  },
+  "keywords": [
+    "crm",
+    "self-hosted",
+    "open-source",
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "sales",
+    "sqlite",
+    "fastify",
+    "typescript",
+    "llm-tools",
+    "claude"
+  ],
+  "homepage": "https://github.com/open-crm/open-crm#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/open-crm/open-crm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/open-crm/open-crm/issues"
+  },
+  "author": "open-crm contributors",
+  "files": [
+    "src/",
+    "!src/**/*.test.ts",
+    "scripts/build-web.mjs",
+    "scripts/smoke.mjs",
+    "tsconfig.json",
+    "README.md",
+    "AGENTS.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -14,6 +14,8 @@ import { selfCheck } from '../domain/selfcheck.ts';
 import { reindexAll, search } from '../domain/search.ts';
 import { overview, workQueue } from '../domain/insights.ts';
 import { listAudit } from '../domain/audit.ts';
+import { backupDatabase, defaultBackupPath } from '../domain/backup.ts';
+import { VERSION } from '../core/version.ts';
 import { list } from '../domain/store.ts';
 import { RESOURCES, RESOURCE_LIST } from '../domain/resources.ts';
 import { isAppError } from '../core/errors.ts';
@@ -46,7 +48,7 @@ const out = (value: unknown): void => {
   process.stdout.write(`${typeof value === 'string' ? value : JSON.stringify(value, null, 2)}\n`);
 };
 
-const HELP = `open-crm — self-hosted CRM for humans and agents
+const HELP = `open-crm ${VERSION} — self-hosted CRM for humans and agents
 
 Usage: open-crm <command> [options]
 
@@ -64,8 +66,10 @@ Setup
 
 Operations
   selfcheck [--repair]         Diagnose the instance; --repair fixes what it safely can
+  backup [--out <path>]        Consistent, verified snapshot while the server keeps running
   reindex                      Rebuild the full-text search index
   info                         Show configuration and migration status
+  version                      Print the version
 
 Reading data
   search <query> [--limit n]   Full-text search across every record type
@@ -194,6 +198,24 @@ async function run(): Promise<number> {
         return report.status === 'fail' ? 1 : 0;
       }
 
+      case 'backup': {
+        const target = flags['out']
+          ? String(flags['out'])
+          : defaultBackupPath(app.config.databaseUrl);
+        const result = backupDatabase(app.db, target);
+        out(result);
+        if (result.integrity !== 'ok') {
+          process.stderr.write('The backup failed its integrity check. Do not rely on it.\n');
+          return 1;
+        }
+        return 0;
+      }
+
+      case 'version': {
+        out(VERSION);
+        return 0;
+      }
+
       case 'reindex': {
         out(reindexAll(ctx));
         return 0;
@@ -202,6 +224,7 @@ async function run(): Promise<number> {
       case 'info': {
         const migrations = pendingMigrations(app.db);
         out({
+          version: VERSION,
           environment: app.config.env,
           database: app.config.databaseUrl,
           public_url: app.config.publicUrl,

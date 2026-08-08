@@ -4,6 +4,7 @@ import { assertCan, type Ctx } from './context.ts';
 import { RESOURCE_LIST } from './resources.ts';
 import { indexRecord, type Row } from './store.ts';
 import { purgeExpiredSessions } from './auth.ts';
+import { VERSION } from '../core/version.ts';
 
 export type CheckStatus = 'pass' | 'warn' | 'fail';
 
@@ -23,6 +24,7 @@ export type SelfCheckReport = {
   status: CheckStatus;
   checked_at: string;
   version: string;
+  environment: string;
   repaired: string[];
   checks: Check[];
 };
@@ -322,7 +324,8 @@ export function selfCheck(
     object: 'selfcheck',
     status,
     checked_at: ctx.now(),
-    version: config.env,
+    version: VERSION,
+    environment: config.env,
     repaired,
     checks,
   };

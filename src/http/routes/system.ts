@@ -13,6 +13,7 @@ import {
 import { parse } from '../validate.ts';
 import * as S from '../../domain/schemas.ts';
 import { pendingMigrations } from '../../db/index.ts';
+import { VERSION } from '../../core/version.ts';
 
 export async function registerSystemRoutes(fastify: FastifyInstance): Promise<void> {
   const app = fastify.app;
@@ -53,6 +54,7 @@ export async function registerSystemRoutes(fastify: FastifyInstance): Promise<vo
     const migrations = pendingMigrations(app.db);
     return {
       object: 'system_info',
+      version: VERSION,
       environment: app.config.env,
       public_url: app.config.publicUrl,
       database: app.config.databaseUrl === ':memory:' ? 'memory' : 'sqlite',

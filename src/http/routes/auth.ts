@@ -42,7 +42,20 @@ export async function registerAuthRoutes(fastify: FastifyInstance): Promise<void
     return { object: 'setup_result', user, next_step: 'POST /api/v1/auth/login' };
   });
 
-  fastify.post('/auth/login', async (request, reply) => {
+  /**
+   * The general budget (hundreds per minute) is far too generous for password
+   * guessing, so login gets its own much smaller bucket keyed by client IP.
+   * The scope-wide rate-limit hook reads this per-route config.
+   */
+  const loginThrottle = {
+    rateLimit: {
+      max: app.config.loginRateLimitMax,
+      timeWindow: app.config.loginRateLimitWindowMs,
+      keyGenerator: (request: { ip: string }) => `login:${request.ip}`,
+    },
+  };
+
+  fastify.post('/auth/login', { config: loginThrottle }, async (request, reply) => {
     const input = parse(S.loginInput, request.body, 'login payload');
     const result = login(app.db, app.config.secret, input, {
       ttlHours: app.config.sessionTtlHours,

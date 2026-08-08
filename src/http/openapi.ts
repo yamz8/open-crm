@@ -2,6 +2,7 @@ import { z, type ZodType } from 'zod';
 import * as S from '../domain/schemas.ts';
 import { RESOURCE_LIST } from '../domain/resources.ts';
 import { FILTER_OPERATORS } from '../domain/store.ts';
+import { VERSION } from '../core/version.ts';
 
 /**
  * The OpenAPI document is generated from the same zod schemas the server
@@ -780,7 +781,7 @@ export function buildOpenApiDocument(publicUrl: string): Record<string, unknown>
     openapi: '3.1.0',
     info: {
       title: 'open-crm',
-      version: '0.1.0',
+      version: VERSION,
       description:
         'A self-hosted CRM designed to be operated by humans through a web UI and by AI agents through this API, an MCP server, and a CLI — all three sharing one service layer, one permission model, and one audit trail.',
       license: { name: 'MIT' },

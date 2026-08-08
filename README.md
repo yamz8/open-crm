@@ -1,5 +1,10 @@
 # open-crm
 
+[![CI](https://github.com/open-crm/open-crm/actions/workflows/ci.yml/badge.svg)](https://github.com/open-crm/open-crm/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522.18-brightgreen.svg)](https://nodejs.org)
+[![MCP](https://img.shields.io/badge/MCP-24%20tools-8b5cf6.svg)](#designed-for-agents)
+
 A self-hosted, open-source CRM built for two kinds of users at once: **people**, through a
 fast web UI, and **AI agents**, through a REST API, an MCP server, and a CLI.
 
@@ -42,8 +47,17 @@ echo "OPEN_CRM_SECRET=$(openssl rand -hex 32)" >> .env
 docker compose up -d
 ```
 
-Data lives in a named volume at `/data`. One SQLite file is the entire backup:
-`docker compose cp open-crm:/data/open-crm.db ./backup.db`.
+Data lives in a named volume at `/data`. Take a consistent, verified snapshot at any time
+without stopping the server:
+
+```bash
+docker compose exec open-crm node src/cli/main.ts backup
+# → /data/backups/open-crm-2026-08-08T19-56-30.db  (integrity: ok)
+```
+
+Do not back the file up with `cp` — that can miss the write-ahead log and produce a subtly
+corrupt copy. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) covers TLS, reverse proxies, backup
+schedules, restores, and upgrades.
 
 ---
 
@@ -117,7 +131,7 @@ Amounts are integers in minor units — `150000` is `$1,500.00`. Responses also 
 
 ## It checks itself
 
-`npm run check` runs formatting, types, the web build, and 110 tests. Beyond that, the running
+`npm run check` runs formatting, types, the web build, and 132 tests. Beyond that, the running
 instance can diagnose itself:
 
 ```bash
@@ -154,12 +168,15 @@ npm run build:web         # bundle the web UI (esbuild)
 npm run check             # format + types + build + tests
 npm test                  # tests only
 npm run smoke             # end-to-end against a running server
+npm run backup            # verified snapshot of the database
+npm run selfcheck         # diagnose the instance
 npm run cli -- --help     # admin CLI
 npm run mcp               # stdio MCP server
 ```
 
 The CLI covers setup and operations: `migrate`, `seed --demo`, `user create`, `token create`,
-`selfcheck --repair`, `reindex`, `search`, `list`, `overview`, `work-queue`, `audit`.
+`backup`, `selfcheck --repair`, `reindex`, `search`, `list`, `overview`, `work-queue`,
+`audit`, `info`, `version`.
 
 ---
 
@@ -229,12 +246,22 @@ and tokens that outlived the account which created them.
 
 Found a vulnerability? Please open a security advisory rather than a public issue.
 
+## Documentation
+
+| | |
+| --- | --- |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production checklist, TLS, backups, restores, upgrades, scaling |
+| [AGENTS.md](AGENTS.md) | How agents should use the CRM, and how to work on the codebase |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup and what a good change looks like |
+| [SECURITY.md](SECURITY.md) | Reporting a vulnerability, and what is in scope |
+| [CHANGELOG.md](CHANGELOG.md) | What changed in each release |
+
 ## Contributing
 
 `npm run check` must pass. New behaviour needs a test; new endpoints need to appear in the
-OpenAPI document and in `/api/v1/discover` (there are tests for both). See
-[AGENTS.md](AGENTS.md) for how agents should work in this repository — and in this CRM.
+OpenAPI document and in `/api/v1/discover` (there are tests for both). Start with
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

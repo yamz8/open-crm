@@ -62,6 +62,9 @@ export type AppConfig = {
   logLevel: string;
   rateLimitMax: number;
   rateLimitWindowMs: number;
+  /** Much tighter budget for password attempts, keyed by client IP. */
+  loginRateLimitMax: number;
+  loginRateLimitWindowMs: number;
   /** Allow the first unauthenticated request to /api/v1/setup to create the owner account. */
   allowSetup: boolean;
   webhookTimeoutMs: number;
@@ -96,6 +99,8 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     logLevel: str('LOG_LEVEL', env === 'test' ? 'silent' : 'info'),
     rateLimitMax: int('RATE_LIMIT_MAX', 600),
     rateLimitWindowMs: int('RATE_LIMIT_WINDOW_MS', 60_000),
+    loginRateLimitMax: int('LOGIN_RATE_LIMIT_MAX', 10),
+    loginRateLimitWindowMs: int('LOGIN_RATE_LIMIT_WINDOW_MS', 300_000),
     allowSetup: bool('ALLOW_SETUP', true),
     webhookTimeoutMs: int('WEBHOOK_TIMEOUT_MS', 10_000),
     webhookAllowPrivate: bool('WEBHOOK_ALLOW_PRIVATE', false),

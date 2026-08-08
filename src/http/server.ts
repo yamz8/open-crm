@@ -70,22 +70,6 @@ export async function buildServer(app: App): Promise<FastifyInstance> {
   fastify.decorateRequest('sessionToken', null);
 
   await fastify.register(cookie, { secret: app.config.secret });
-  await fastify.register(rateLimit, {
-    global: false,
-    max: app.config.rateLimitMax,
-    timeWindow: app.config.rateLimitWindowMs,
-    keyGenerator: (request) => {
-      const ctx = (request as FastifyRequest).ctx;
-      return ctx?.actor.id ?? request.ip;
-    },
-    errorResponseBuilder: (_request, context) => ({
-      error: {
-        code: 'rate_limited',
-        message: `Rate limit exceeded: at most ${context.max} requests per ${context.after}.`,
-        hint: 'Back off and retry after the window resets. The Retry-After header tells you how long.',
-      },
-    }),
-  });
 
   // -- Authentication --------------------------------------------------------
   fastify.addHook('onRequest', async (request) => {
@@ -143,7 +127,16 @@ export async function buildServer(app: App): Promise<FastifyInstance> {
       return reply.status(error.status).send(error.toJSON());
     }
     const status = (error as { statusCode?: number }).statusCode;
-    if (status === 429) return reply.status(429).send(error);
+    if (status === 429) {
+      const body = (error as { error?: unknown }).error;
+      return reply.status(429).send(
+        body
+          ? { error: body }
+          : new AppError('rate_limited', 'Rate limit exceeded', {
+              hint: 'Back off and retry after the window resets.',
+            }).toJSON(),
+      );
+    }
     if (status !== undefined && status >= 400 && status < 500) {
       return reply.status(status).send(
         new AppError('bad_request', String((error as Error).message ?? 'Malformed request'), {
@@ -163,7 +156,25 @@ export async function buildServer(app: App): Promise<FastifyInstance> {
   // -- Routes ---------------------------------------------------------------
   await fastify.register(
     async (api) => {
-      api.addHook('onRequest', api.rateLimit());
+      // Registered here rather than at the root so static assets and /mcp are
+      // untouched, and with global:true so a route can tighten its own budget
+      // via `config.rateLimit` — which is how login gets a much smaller one.
+      await api.register(rateLimit, {
+        global: true,
+        max: app.config.rateLimitMax,
+        timeWindow: app.config.rateLimitWindowMs,
+        keyGenerator: (request) => (request as FastifyRequest).ctx?.actor.id ?? request.ip,
+        // The plugin throws this object, so it must carry statusCode for the
+        // error handler to recognise it rather than treating it as a crash.
+        errorResponseBuilder: (_request, context) => ({
+          statusCode: 429,
+          error: {
+            code: 'rate_limited',
+            message: `Rate limit exceeded: at most ${context.max} requests per ${context.after}.`,
+            hint: 'Back off and retry after the window resets. The Retry-After header tells you how long.',
+          },
+        }),
+      });
       await registerDiscoveryRoutes(api);
       await registerAuthRoutes(api);
       await registerResourceRoutes(api);

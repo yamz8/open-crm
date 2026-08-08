@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { createApp, type App } from './app.ts';
+import type { AppConfig } from './core/config.ts';
 import { buildServer } from './http/server.ts';
 import { resetDomainEventHandlers } from './domain/events.ts';
 
@@ -29,7 +30,12 @@ export const OWNER = {
  * directly, so route wiring, auth, and validation are covered too.
  */
 export async function createHarness(
-  options: { seed?: boolean; skipBootstrap?: boolean } = {},
+  options: {
+    seed?: boolean;
+    skipBootstrap?: boolean;
+    /** Override any config value; used by tests that exercise limits. */
+    config?: Partial<AppConfig>;
+  } = {},
 ): Promise<Harness> {
   resetDomainEventHandlers();
 
@@ -40,6 +46,9 @@ export async function createHarness(
       env: 'test',
       secret: 'test-secret-not-used-in-production',
       rateLimitMax: 100_000,
+      // Most suites log in many times; the throttle has its own dedicated test.
+      loginRateLimitMax: 100_000,
+      ...(options.config ?? {}),
     },
     ...(options.skipBootstrap ? { skipBootstrap: true } : {}),
   });

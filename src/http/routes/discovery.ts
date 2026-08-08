@@ -5,6 +5,7 @@ import { buildOpenApiDocument, jsonSchemaOf } from '../openapi.ts';
 import { buildLlmsTxt } from '../llms.ts';
 import { isSetupComplete } from '../../domain/auth.ts';
 import type { App } from '../../app.ts';
+import { VERSION } from '../../core/version.ts';
 
 /**
  * A capability map an agent can read once and then use the API correctly without
@@ -17,7 +18,7 @@ export function buildDiscovery(app: App): Record<string, unknown> {
   return {
     object: 'discovery',
     name: 'open-crm',
-    version: '0.1.0',
+    version: VERSION,
     description:
       'Self-hosted CRM with a shared service layer behind REST, MCP, and a CLI. Humans and agents see the same data, the same permissions, and the same audit trail.',
     public_url: url,
