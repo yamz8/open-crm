@@ -1,0 +1,12 @@
+node_modules/
+data/
+public/assets/
+public/index.html
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.local
+.DS_Store
+*.log
+coverage/

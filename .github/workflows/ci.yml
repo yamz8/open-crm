@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Format
+        run: npm run format:check
+      - name: Types
+        run: npm run typecheck
+      - name: Build web UI
+        run: npm run build:web
+      - name: Tests
+        run: npm test
+
+  smoke:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
+      - name: Start the server
+        run: |
+          OPEN_CRM_SECRET=ci-secret-for-smoke-testing-only \
+          DATABASE_URL=/tmp/ci.db PORT=4000 LOG_LEVEL=warn \
+          node src/main.ts &
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:4000/readyz && break
+            sleep 1
+          done
+      - name: End-to-end smoke test
+        run: node scripts/smoke.mjs --url http://localhost:4000
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build -t open-crm:ci .
+      - name: Boot it and check readiness
+        run: |
+          docker run -d --name crm -p 4000:4000 \
+            -e OPEN_CRM_SECRET=ci-secret-for-smoke-testing-only open-crm:ci
+          for i in $(seq 1 40); do
+            curl -fsS http://localhost:4000/readyz && exit 0
+            sleep 2
+          done
+          docker logs crm
+          exit 1

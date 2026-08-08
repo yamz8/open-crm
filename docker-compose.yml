@@ -1,0 +1,21 @@
+services:
+  open-crm:
+    build: .
+    image: open-crm:latest
+    restart: unless-stopped
+    ports:
+      - '${PORT:-4000}:4000'
+    environment:
+      # Generate once and keep it: `openssl rand -hex 32`.
+      # Changing it invalidates every session and API token.
+      OPEN_CRM_SECRET: '${OPEN_CRM_SECRET:?generate one with openssl rand -hex 32}'
+      PUBLIC_URL: '${PUBLIC_URL:-http://localhost:4000}'
+      DATABASE_URL: /data/open-crm.db
+      LOG_LEVEL: '${LOG_LEVEL:-info}'
+      # Set to true only if the container sits behind a reverse proxy you control.
+      TRUST_PROXY: '${TRUST_PROXY:-false}'
+    volumes:
+      - crm-data:/data
+
+volumes:
+  crm-data:
