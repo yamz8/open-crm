@@ -509,7 +509,7 @@ tbody tr:last-child td {
 
 .detail {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1fr 380px;
   gap: 18px;
   align-items: start;
 }
@@ -521,8 +521,8 @@ tbody tr:last-child td {
 
 .prop-list {
   display: grid;
-  grid-template-columns: 116px 1fr;
-  gap: 9px 14px;
+  grid-template-columns: 96px 1fr;
+  gap: 9px 12px;
   font-size: 13px;
 }
 .prop-key {
@@ -530,7 +530,8 @@ tbody tr:last-child td {
   font-weight: 550;
 }
 .prop-value {
-  word-break: break-word;
+  /* Break long emails and URLs only when they genuinely do not fit. */
+  overflow-wrap: anywhere;
 }
 
 .timeline {
