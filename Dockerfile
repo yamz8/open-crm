@@ -2,7 +2,7 @@
 
 # The server runs TypeScript directly through Node's built-in type stripping, so
 # there is no server build step — only the browser bundle needs building.
-FROM node:22-bookworm-slim AS build
+FROM node:25-bookworm-slim AS build
 WORKDIR /app
 
 # better-sqlite3 compiles from source when no prebuild matches this platform.
@@ -22,7 +22,7 @@ RUN node scripts/build-web.mjs
 # module is compiled exactly once and the runtime image stays small.
 RUN npm prune --omit=dev
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:25-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
