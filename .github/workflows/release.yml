@@ -88,8 +88,14 @@ jobs:
     name: Publish to npm
     needs: verify
     runs-on: ubuntu-latest
-    # Only runs when an NPM_TOKEN is configured; forks and unconfigured repos skip it.
+    # Skipped on forks. Also a no-op until npm publishing is set up — see the
+    # "Publishing to npm" section of CONTRIBUTING.md.
     if: ${{ github.repository_owner == 'yamz8' }}
+    permissions:
+      contents: read
+      # Required by `npm publish --provenance`: the signed attestation is built
+      # from a GitHub OIDC token. Without this the publish fails outright.
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

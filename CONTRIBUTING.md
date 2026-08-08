@@ -84,6 +84,45 @@ Explain what changed and why the change is right, in prose. If you fixed a bug, 
 broken behaviour was — the next person reading `git log` is usually trying to understand a
 decision, not re-read the diff.
 
+## Publishing a release
+
+Maintainers only. Releases are cut by pushing a tag; the workflow does the rest.
+
+```bash
+# 1. Bump the version and write the changelog entry, then commit
+npm version 0.2.0 --no-git-tag-version
+$EDITOR CHANGELOG.md          # add a "## [0.2.0]" section
+
+# 2. Tag and push
+git commit -am "Release 0.2.0"
+git tag -a v0.2.0 -m "open-crm 0.2.0"
+git push origin main --follow-tags
+```
+
+The workflow refuses to proceed unless the tag matches `package.json` and the changelog has a
+matching section, then publishes a multi-arch image to GHCR, boots it to confirm it comes up
+ready, and drafts a GitHub release.
+
+### Publishing to npm
+
+The npm job is skipped until publishing is configured. Pick one:
+
+**Trusted publishing (preferred).** Link the package to this repository's workflow on npmjs.com
+so releases authenticate with a short-lived GitHub OIDC token and there is no long-lived secret
+to leak or rotate. Once configured, drop the `NODE_AUTH_TOKEN` line from the `npm` job in
+`.github/workflows/release.yml`. Check npm's current documentation for the exact setup path.
+
+**Granular access token.** Create one on npmjs.com scoped to this package with publish
+permission and the shortest expiry you can live with, then add it to the repository without it
+touching your shell history or a file:
+
+```bash
+gh secret set NPM_TOKEN --repo yamz8/open-crm   # paste at the prompt, then Ctrl-D
+```
+
+Either way, `npm publish --provenance` needs `id-token: write` on the job — it is already set.
+Rotate or revoke the token from npmjs.com if it is ever exposed.
+
 ## Reporting bugs
 
 Include the version (`npm run cli -- version`), what you expected, what happened, and the
