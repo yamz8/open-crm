@@ -89,7 +89,7 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     # Only runs when an NPM_TOKEN is configured; forks and unconfigured repos skip it.
-    if: ${{ github.repository_owner == 'open-crm' }}
+    if: ${{ github.repository_owner == 'yamz8' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

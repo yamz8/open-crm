@@ -25,8 +25,10 @@ space, in public and in private.
 
 ## Reporting
 
-If someone's behaviour is a problem, email **conduct@open-crm.dev**. Reports go only to the
-maintainers and are handled confidentially. Include what happened, where, and any links.
+If someone's behaviour is a problem, contact the maintainers privately — open a
+[private report](https://github.com/yamz8/open-crm/security/advisories/new) or message
+[@yamz8](https://github.com/yamz8) directly on GitHub. Reports are handled confidentially.
+Include what happened, where, and any links.
 
 You will get an acknowledgement within 3 working days. We will look into it and tell you what
 we decided. If your report concerns a maintainer, say so, and it will be handled by someone

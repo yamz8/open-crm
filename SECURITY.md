@@ -4,7 +4,7 @@
 
 Please report security issues privately, not as a public issue.
 
-Use GitHub's **[Report a vulnerability](https://github.com/open-crm/open-crm/security/advisories/new)**
+Use GitHub's **[Report a vulnerability](https://github.com/yamz8/open-crm/security/advisories/new)**
 form, which opens a private advisory only the maintainers can see.
 
 Please include:

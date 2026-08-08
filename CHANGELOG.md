@@ -49,7 +49,7 @@ permission model, the same validation, and the same reversible audit trail.
   server is running
 - Outbound webhooks with HMAC-signed payloads and delivery history
 - Docker image running as a non-root user with a health check, and a `docker compose` setup
-- 124 tests through the real HTTP stack, a 35-assertion end-to-end smoke test against a
+- 132 tests through the real HTTP stack, a 35-assertion end-to-end smoke test against a
   running server, and a UI/API response contract suite
 
 ### Security
@@ -69,5 +69,5 @@ Findings from the pre-release security review, fixed before publication:
   cookie alone; cookie-authenticated writes must declare a JSON content type
 - Password attempts get their own tight rate-limit bucket, separate from the general budget
 
-[Unreleased]: https://github.com/open-crm/open-crm/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/open-crm/open-crm/releases/tag/v0.1.0
+[Unreleased]: https://github.com/yamz8/open-crm/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/yamz8/open-crm/releases/tag/v0.1.0

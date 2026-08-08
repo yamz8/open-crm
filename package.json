@@ -59,13 +59,13 @@
     "llm-tools",
     "claude"
   ],
-  "homepage": "https://github.com/open-crm/open-crm#readme",
+  "homepage": "https://github.com/yamz8/open-crm#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/open-crm/open-crm.git"
+    "url": "git+https://github.com/yamz8/open-crm.git"
   },
   "bugs": {
-    "url": "https://github.com/open-crm/open-crm/issues"
+    "url": "https://github.com/yamz8/open-crm/issues"
   },
   "author": "open-crm contributors",
   "files": [

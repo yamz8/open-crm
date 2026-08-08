@@ -1,6 +1,6 @@
 # open-crm
 
-[![CI](https://github.com/open-crm/open-crm/actions/workflows/ci.yml/badge.svg)](https://github.com/open-crm/open-crm/actions/workflows/ci.yml)
+[![CI](https://github.com/yamz8/open-crm/actions/workflows/ci.yml/badge.svg)](https://github.com/yamz8/open-crm/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522.18-brightgreen.svg)](https://nodejs.org)
 [![MCP](https://img.shields.io/badge/MCP-24%20tools-8b5cf6.svg)](#designed-for-agents)

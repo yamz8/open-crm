@@ -60,7 +60,7 @@ To use the published image instead of building locally:
 ```yaml
 services:
   open-crm:
-    image: ghcr.io/open-crm/open-crm:0.1.0 # pin a version, not :latest
+    image: ghcr.io/yamz8/open-crm:0.1.0 # pin a version, not :latest
 ```
 
 ---

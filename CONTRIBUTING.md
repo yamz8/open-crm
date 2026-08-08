@@ -6,7 +6,7 @@ otherwise open to change.
 ## Getting set up
 
 ```bash
-git clone https://github.com/open-crm/open-crm.git && cd open-crm
+git clone https://github.com/yamz8/open-crm.git && cd open-crm
 npm install
 npm run build:web
 npm run seed          # default pipeline + demo records
