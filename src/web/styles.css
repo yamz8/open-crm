@@ -187,6 +187,9 @@ code,
 .main {
   padding: 20px 26px 64px;
   max-width: 1240px;
+  /* Grid items default to min-width:auto, which lets a wide table stretch the
+     whole page. Without this, narrow viewports scroll horizontally. */
+  min-width: 0;
 }
 .page-head {
   display: flex;
@@ -302,6 +305,8 @@ label {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+  /* Tables wider than the card scroll here, not on the body. */
+  overflow-x: auto;
 }
 .card-head {
   padding: 13px 16px;
@@ -318,7 +323,7 @@ label {
   gap: 14px;
 }
 .grid-4 {
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 .grid-2 {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -817,13 +822,18 @@ tbody tr:last-child td {
 @media (max-width: 800px) {
   .shell {
     grid-template-columns: 1fr;
+    /* Give the leftover height to the content row. Without this the nav row
+       stretches on short pages and the wrapped links drift apart. */
+    grid-template-rows: auto 1fr;
   }
   .sidebar {
     position: static;
     height: auto;
     flex-direction: row;
     flex-wrap: wrap;
-    overflow-x: auto;
+    align-content: flex-start;
+    overflow: visible;
+    gap: 2px;
   }
   .sidebar .nav-group,
   .sidebar-footer {
