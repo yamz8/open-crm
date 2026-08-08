@@ -104,9 +104,19 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
       - run: npm ci
-      - run: npm publish --provenance --access public
+      - name: Publish, if npm publishing is configured
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # The secrets context is not usable in a job-level `if`, so the skip
+          # has to happen here. A release without npm configured is a success,
+          # not a failure — the container image is the primary artifact.
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "NPM_TOKEN is not set; skipping npm publish."
+            echo "See CONTRIBUTING.md → Publishing to npm to enable it."
+            exit 0
+          fi
+          npm publish --provenance --access public
 
   github-release:
     name: Draft the GitHub release

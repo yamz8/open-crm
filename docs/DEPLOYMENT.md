@@ -63,6 +63,10 @@ services:
     image: ghcr.io/yamz8/open-crm:0.1.0 # pin a version, not :latest
 ```
 
+> **Maintainer note.** GHCR packages are private on first push regardless of repository
+> visibility. After the first release, set the package to public under the repository's
+> Packages settings, or nobody else can pull it.
+
 ---
 
 ## Reverse proxy
