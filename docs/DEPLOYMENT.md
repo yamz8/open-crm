@@ -63,9 +63,10 @@ services:
     image: ghcr.io/yamz8/open-crm:0.1.0 # pin a version, not :latest
 ```
 
-> **Maintainer note.** GHCR packages are private on first push regardless of repository
-> visibility. After the first release, set the package to public under the repository's
-> Packages settings, or nobody else can pull it.
+The image is public and needs no authentication to pull — packages published with the
+workflow's `GITHUB_TOKEN` inherit the repository's visibility. If you fork this into a private
+repository, the package will be private too, and you will need `docker login ghcr.io` or a
+change under the repository's Packages settings.
 
 ---
 

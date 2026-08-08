@@ -127,11 +127,21 @@ jobs:
       - name: Pull this version's changelog section
         run: |
           TAG="${GITHUB_REF_NAME#v}"
-          awk -v tag="## \\[$TAG\\]" '
-            $0 ~ tag {found=1; next}
-            found && /^## \[/ {exit}
-            found {print}
+          # index() rather than a regex: awk implementations disagree about
+          # escape handling in -v assignments, and gawk turns "\[$TAG\]" into
+          # the character class [0.1.0], which silently matches nothing.
+          awk -v tag="## [$TAG]" '
+            index($0, tag) == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
           ' CHANGELOG.md > release-notes.md
+
+          # An empty body means the release ships with no notes at all, so fail
+          # rather than publish a blank one.
+          if [ ! -s release-notes.md ]; then
+            echo "No changelog section found for $TAG" >&2
+            exit 1
+          fi
           cat release-notes.md
       - uses: softprops/action-gh-release@v2
         with:
