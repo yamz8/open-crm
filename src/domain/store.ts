@@ -52,7 +52,7 @@ export function formatMoney(minorUnits: number, currency: string): string {
 // -- Full-text search ---------------------------------------------------------
 
 /**
- * FTS5 has its own query syntax, and raw user input ("acme@corp.com", "C++")
+ * FTS5 has its own query syntax, and raw user input ("acme@example.com", "C++")
  * is a syntax error more often than not. Tokenize and quote instead of trusting.
  */
 export function toFtsQuery(input: string): string | null {
