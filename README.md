@@ -108,8 +108,11 @@ npm run cli -- token create --name claude-code --scopes "contacts:write,companie
 claude mcp add open-crm \
   --env OPEN_CRM_URL=http://localhost:4000 \
   --env OPEN_CRM_TOKEN=ocrm_... \
-  -- npx open-crm mcp
+  -- npx open-crm-server mcp
 ```
+
+The npm package is published as `open-crm-server` (npm refuses `open-crm` as too close to an
+existing package); the repository, image, and installed command are all still `open-crm`.
 
 The MCP server exposes 24 tools (`crm_search`, `crm_get_context`, `crm_move_deal`,
 `crm_work_queue`, `crm_audit`, `crm_revert`, …), four resources, and three prompts

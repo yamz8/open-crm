@@ -6,6 +6,17 @@ versions may contain breaking changes — those are always listed first.
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-08-09
+
+### Changed
+
+- **The npm package is `open-crm-server`, not `open-crm`.** npm's registry refuses the
+  unscoped name `open-crm` as too similar to the existing `open-cli` package, so the
+  `npx open-crm mcp` line that 0.1.0 documented in the README, the web UI, `/llms.txt`, and the
+  MCP server's own error message could never have worked. Every reference now reads
+  `npx open-crm-server mcp`. The repository, the container image, and the installed command are
+  all still `open-crm`; only the npm install path changed.
+
 ## [0.1.0] — 2026-08-08
 
 First release. A self-hosted CRM whose API is the primary surface rather than an afterthought:
@@ -69,5 +80,6 @@ Findings from the pre-release security review, fixed before publication:
   cookie alone; cookie-authenticated writes must declare a JSON content type
 - Password attempts get their own tight rate-limit bucket, separate from the general budget
 
-[Unreleased]: https://github.com/yamz8/open-crm/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/yamz8/open-crm/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/yamz8/open-crm/releases/tag/v0.1.1
 [0.1.0]: https://github.com/yamz8/open-crm/releases/tag/v0.1.0

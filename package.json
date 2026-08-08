@@ -1,6 +1,6 @@
 {
-  "name": "open-crm",
-  "version": "0.1.0",
+  "name": "open-crm-server",
+  "version": "0.1.1",
   "description": "Self-hosted, open-source CRM built for humans and AI agents \u2014 REST, MCP, and CLI on one service layer with a reversible audit trail.",
   "license": "MIT",
   "type": "module",
@@ -8,7 +8,7 @@
     "node": ">=22.18.0"
   },
   "bin": {
-    "open-crm": "./src/cli/main.ts"
+    "open-crm": "src/cli/main.ts"
   },
   "scripts": {
     "dev": "node --watch src/main.ts",

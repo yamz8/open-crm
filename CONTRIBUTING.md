@@ -107,7 +107,7 @@ ready, and drafts a GitHub release.
 
 The npm job skips with a logged message until this is set up, so releases stay green
 either way. The container image is the primary artifact; npm exists only so that
-`npx open-crm mcp` works.
+`npx open-crm-server mcp` works.
 
 **The first publish cannot be automated.** npm's OIDC trusted publishing is configured in a
 package's settings page, which requires the package to already exist — a deliberate guard

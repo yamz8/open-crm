@@ -1330,7 +1330,7 @@ async function agentsView(): Promise<HTMLElement> {
           h(
             'div',
             { class: 'token-value' },
-            `claude mcp add open-crm --env OPEN_CRM_URL=${location.origin} --env OPEN_CRM_TOKEN=<token> -- npx open-crm mcp`,
+            `claude mcp add open-crm --env OPEN_CRM_URL=${location.origin} --env OPEN_CRM_TOKEN=<token> -- npx open-crm-server mcp`,
           ),
           h(
             'p',
@@ -1519,7 +1519,7 @@ function showTokenModal(created: any): void {
       h(
         'div',
         { class: 'token-value' },
-        `claude mcp add open-crm --env OPEN_CRM_URL=${location.origin} --env OPEN_CRM_TOKEN=${created.token} -- npx open-crm mcp`,
+        `claude mcp add open-crm --env OPEN_CRM_URL=${location.origin} --env OPEN_CRM_TOKEN=${created.token} -- npx open-crm-server mcp`,
       ),
     ),
     [h('button', { class: 'btn-primary', onclick: () => closeModal() }, 'Done')],

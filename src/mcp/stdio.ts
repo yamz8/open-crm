@@ -6,7 +6,7 @@ import { fetchExecutor } from './executor.ts';
 /**
  * stdio MCP server: what you point Claude Code (or any MCP client) at.
  *
- *   claude mcp add open-crm -- npx open-crm mcp
+ *   claude mcp add open-crm -- npx open-crm-server mcp
  *
  * It talks to a running instance over HTTP with an API token, so the same
  * binary works against localhost and against a shared deployment.
@@ -26,7 +26,7 @@ async function main(): Promise<void> {
         `    -d '{"name":"claude-code","scopes":["*"]}'`,
         '',
         'Then run:',
-        `  OPEN_CRM_URL=${url} OPEN_CRM_TOKEN=ocrm_... npx open-crm mcp`,
+        `  OPEN_CRM_URL=${url} OPEN_CRM_TOKEN=ocrm_... npx open-crm-server mcp`,
         '',
       ].join('\n'),
     );

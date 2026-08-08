@@ -63,7 +63,7 @@ write a note on the timeline when you change something a person will wonder abou
 
 ## MCP
 
-    npx open-crm mcp        # stdio, reads OPEN_CRM_URL and OPEN_CRM_TOKEN
+    npx open-crm-server mcp        # stdio, reads OPEN_CRM_URL and OPEN_CRM_TOKEN
     ${publicUrl}/mcp        # streamable HTTP
 
 The tools mirror the endpoints above and enforce the same scopes.

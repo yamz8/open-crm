@@ -177,7 +177,7 @@ async function run(): Promise<number> {
             ...record,
             token,
             warning: 'Copy this now — the value is never shown again.',
-            mcp_setup: `OPEN_CRM_URL=${app.config.publicUrl} OPEN_CRM_TOKEN=${token} npx open-crm mcp`,
+            mcp_setup: `OPEN_CRM_URL=${app.config.publicUrl} OPEN_CRM_TOKEN=${token} npx open-crm-server mcp`,
           });
           return 0;
         }
