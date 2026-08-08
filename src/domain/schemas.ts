@@ -297,7 +297,9 @@ export const tokenCreate = z.strictObject({
 });
 
 export const webhookCreate = z.strictObject({
-  url: z.url('Must be an absolute http(s) URL'),
+  // Scheme is pinned here: a bare z.url() accepts file:// and ftp://, which a
+  // server-side fetch has no business following.
+  url: z.url({ protocol: /^https?$/, error: 'Must be an absolute http:// or https:// URL' }),
   events: z.array(trimmed.min(1)).optional().describe('Defaults to ["*"]'),
   description: shortText,
   active: z.boolean().optional(),

@@ -22,10 +22,11 @@ export async function registerSystemRoutes(fastify: FastifyInstance): Promise<vo
    * reports what it did, so an operator (or an agent) can resolve drift without
    * shell access.
    */
-  fastify.get<{ Querystring: { repair?: string } }>('/system/selfcheck', async (request, reply) => {
-    const report = selfCheck(requireCtx(request), app.config, {
-      repair: request.query.repair === 'true',
-    });
+  // GET is read-only on purpose: a state-changing GET is reachable cross-site
+  // with the victim's session cookie. Repair lives on POST, which the
+  // content-type guard protects.
+  fastify.get('/system/selfcheck', async (request, reply) => {
+    const report = selfCheck(requireCtx(request), app.config, { repair: false });
     if (report.status === 'fail') reply.status(503);
     return report;
   });

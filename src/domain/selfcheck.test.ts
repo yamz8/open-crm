@@ -138,7 +138,11 @@ describe('webhooks', () => {
     };
 
     for (let attempt = 0; attempt < 5; attempt++) {
-      await flushDeliveries(h.app.db, { fetchImpl: alwaysFails as unknown as typeof fetch });
+      await flushDeliveries(h.app.db, {
+        fetchImpl: alwaysFails as unknown as typeof fetch,
+        // This test exercises retry mechanics, not destination policy.
+        allowPrivateDestinations: true,
+      });
     }
 
     const deliveries = await h.api('GET', `/api/v1/webhooks/${webhook.body.id}/deliveries`);
@@ -165,7 +169,10 @@ describe('webhooks', () => {
       return { ok: true, status: 200 } as Response;
     };
 
-    await flushDeliveries(h.app.db, { fetchImpl: receiver as unknown as typeof fetch });
+    await flushDeliveries(h.app.db, {
+      fetchImpl: receiver as unknown as typeof fetch,
+      allowPrivateDestinations: true,
+    });
 
     assert.ok(verified, 'the receiver could verify the HMAC signature');
     const deliveries = await h.api('GET', `/api/v1/webhooks/${created.body.id}/deliveries`);

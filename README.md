@@ -214,9 +214,18 @@ and derives session and token lookup keys. See [.env.example](.env.example).
   unknown accounts so timing does not reveal which addresses exist.
 - Session tokens and API tokens are stored only as HMACs keyed by the instance secret.
 - Cookie-authenticated writes must send `Content-Type: application/json`, which blocks
-  cross-site form posts. Bearer-token clients are unaffected.
-- API tokens carry scopes and can never exceed the role of the user who minted them.
+  cross-site form posts. Bearer-token clients are unaffected, and no endpoint mutates on GET.
+- API tokens can never exceed the role of the user who minted them, and they do not outlive
+  that account: deleting or disabling a user revokes the tokens they created, and a token
+  whose creator is gone is refused rather than falling back to a default role.
 - Webhook payloads are signed: `x-open-crm-signature: sha256=HMAC(secret, "<timestamp>.<body>")`.
+- Webhook destinations are restricted to `http(s)` and re-resolved before every delivery;
+  private, loopback, and link-local addresses are refused and redirects are not followed, so a
+  webhook cannot be turned into a port scanner or a route to cloud metadata. Set
+  `WEBHOOK_ALLOW_PRIVATE=true` if you deliver to a sibling container you trust.
+
+`npm run cli -- selfcheck` flags the two states that matter here: unrestricted (`["*"]`) tokens,
+and tokens that outlived the account which created them.
 
 Found a vulnerability? Please open a security advisory rather than a public issue.
 

@@ -180,6 +180,9 @@ export function updateUser(
   if (input.password !== undefined || input.disabled) {
     ctx.db.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
   }
+  // Disabling an account has to cut off its agents too, or the tokens it minted
+  // keep working at its old role long after the human lost access.
+  if (input.disabled) revokeTokensCreatedBy(ctx, id);
 
   const row = findUser(ctx.db, id)!;
   writeAudit(
@@ -193,7 +196,10 @@ export function updateUser(
   return publicUser(row);
 }
 
-export function deleteUser(ctx: Ctx, id: string): { deleted: true; id: string } {
+export function deleteUser(
+  ctx: Ctx,
+  id: string,
+): { deleted: true; id: string; revoked_tokens: number } {
   assertCan(ctx, 'users', 'admin');
   const before = findUser(ctx.db, id);
   if (!before) throw notFound('user', id);
@@ -201,9 +207,17 @@ export function deleteUser(ctx: Ctx, id: string): { deleted: true; id: string } 
   if (before.role === 'owner') {
     throw badRequest('Owners cannot be deleted', { hint: 'Change the role to admin first.' });
   }
-  ctx.db.prepare('DELETE FROM users WHERE id = ?').run(id);
-  writeAudit(ctx, 'delete', 'user', id, { ...before, password_hash: '[redacted]' }, null);
-  return { deleted: true, id };
+  const run = ctx.db.transaction(() => {
+    // Offboarding must take the account's agents with it. Without this the FK's
+    // ON DELETE SET NULL orphans the tokens and they keep working.
+    const revoked = revokeTokensCreatedBy(ctx, id);
+    ctx.db.prepare('DELETE FROM users WHERE id = ?').run(id);
+    writeAudit(ctx, 'delete', 'user', id, { ...before, password_hash: '[redacted]' }, null);
+    return revoked;
+  });
+
+  const revokedTokens = run();
+  return { deleted: true, id, revoked_tokens: revokedTokens };
 }
 
 export function actorFromUser(row: UserRow): Actor {
@@ -400,15 +414,46 @@ export function resolveApiToken(db: Db, secret: string, token: string): Actor | 
     row.id,
   );
 
-  const creator = row.created_by ? findUser(db, row.created_by) : undefined;
   return {
     type: 'agent',
     id: row.id,
     label: row.name,
-    // A token can never exceed the role of whoever minted it.
-    role: creator?.role ?? 'admin',
+    role: tokenRole(db, row),
     scopes: JSON.parse(row.scopes) as string[],
   };
+}
+
+/**
+ * A token can never exceed the role of whoever minted it, and it must not
+ * outlive them.
+ *
+ * Deleting or disabling a user revokes their tokens (see `deleteUser` and
+ * `updateUser`), so a live token that still names a creator must resolve to a
+ * live, enabled account. If it does not, the token is an orphan from before
+ * that rule existed — fail closed rather than falling back to a default role,
+ * which would hand a de-provisioned account's token *more* authority than it
+ * had the day before.
+ *
+ * A NULL `created_by` means the token was minted through the CLI, which only
+ * someone with shell access to the server can run. Admin is the ceiling there.
+ */
+function tokenRole(db: Db, row: TokenRow): Role {
+  if (!row.created_by) return 'admin';
+  const creator = findUser(db, row.created_by);
+  if (!creator) {
+    throw unauthorized('The account that created this token no longer exists');
+  }
+  if (creator.disabled_at) {
+    throw unauthorized('The account that created this token is disabled');
+  }
+  return creator.role;
+}
+
+/** Revokes every live token a user minted. Called when they are deleted or disabled. */
+export function revokeTokensCreatedBy(ctx: Ctx, userId: string): number {
+  return ctx.db
+    .prepare('UPDATE api_tokens SET revoked_at = ? WHERE created_by = ? AND revoked_at IS NULL')
+    .run(ctx.now(), userId).changes;
 }
 
 // -- First-run setup ----------------------------------------------------------

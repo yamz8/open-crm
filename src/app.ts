@@ -59,7 +59,10 @@ export function createApp(options: CreateAppOptions = {}): App {
   let housekeepingCounter = 0;
 
   const tick = async (): Promise<void> => {
-    await flushDeliveries(db, { timeoutMs: config.webhookTimeoutMs });
+    await flushDeliveries(db, {
+      timeoutMs: config.webhookTimeoutMs,
+      allowPrivateDestinations: config.webhookAllowPrivate,
+    });
     housekeepingCounter++;
     if (housekeepingCounter % 60 === 0) {
       purgeExpiredSessions(db);

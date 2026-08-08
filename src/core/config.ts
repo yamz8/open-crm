@@ -65,6 +65,8 @@ export type AppConfig = {
   /** Allow the first unauthenticated request to /api/v1/setup to create the owner account. */
   allowSetup: boolean;
   webhookTimeoutMs: number;
+  /** Allow webhooks to target private/loopback addresses. Off by default (SSRF). */
+  webhookAllowPrivate: boolean;
   trustProxy: boolean;
 };
 
@@ -96,6 +98,7 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     rateLimitWindowMs: int('RATE_LIMIT_WINDOW_MS', 60_000),
     allowSetup: bool('ALLOW_SETUP', true),
     webhookTimeoutMs: int('WEBHOOK_TIMEOUT_MS', 10_000),
+    webhookAllowPrivate: bool('WEBHOOK_ALLOW_PRIVATE', false),
     trustProxy: bool('TRUST_PROXY', false),
     ...overrides,
   };

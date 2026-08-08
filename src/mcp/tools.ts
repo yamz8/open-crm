@@ -94,6 +94,11 @@ function bodyWithout(input: Record<string, unknown>, ...omit: string[]): Record<
   return out;
 }
 
+/** Ids go into a URL path, so encode them rather than trusting the caller. */
+function seg(value: unknown): string {
+  return encodeURIComponent(String(value));
+}
+
 function idempotencyOf(input: Record<string, unknown>): string | undefined {
   const key = input['idempotency_key'];
   return typeof key === 'string' && key ? key : undefined;
@@ -168,7 +173,7 @@ export const TOOLS: ToolDef[] = [
     readOnly: true,
     build: (input) => ({
       method: 'GET',
-      path: `/api/v1/${pluralOf(input['type'])}/${String(input['id'])}/context`,
+      path: `/api/v1/${pluralOf(input['type'])}/${seg(input['id'])}/context`,
       query: {
         ...(input['activity_limit'] !== undefined
           ? { activity_limit: String(input['activity_limit']) }
@@ -203,7 +208,7 @@ export const TOOLS: ToolDef[] = [
     readOnly: true,
     build: (input) => ({
       method: 'GET',
-      path: `/api/v1/${pluralOf(input['type'])}/${String(input['id'])}`,
+      path: `/api/v1/${pluralOf(input['type'])}/${seg(input['id'])}`,
     }),
   },
 
@@ -299,7 +304,7 @@ export const TOOLS: ToolDef[] = [
     readOnly: false,
     build: (input) => ({
       method: 'PATCH',
-      path: `/api/v1/${pluralOf(input['type'])}/${String(input['id'])}`,
+      path: `/api/v1/${pluralOf(input['type'])}/${seg(input['id'])}`,
       body: input['fields'],
       ...(input['version'] !== undefined ? { ifMatch: String(input['version']) } : {}),
     }),
@@ -321,7 +326,7 @@ export const TOOLS: ToolDef[] = [
     readOnly: false,
     build: (input) => ({
       method: 'POST',
-      path: `/api/v1/deals/${String(input['id'])}/move`,
+      path: `/api/v1/deals/${seg(input['id'])}/move`,
       body: bodyWithout(input, 'id', 'idempotency_key'),
       idempotencyKey: idempotencyOf(input),
     }),
@@ -343,7 +348,7 @@ export const TOOLS: ToolDef[] = [
     readOnly: false,
     build: (input) => ({
       method: 'POST',
-      path: `/api/v1/deals/${String(input['id'])}/close`,
+      path: `/api/v1/deals/${seg(input['id'])}/close`,
       body: bodyWithout(input, 'id', 'idempotency_key'),
       idempotencyKey: idempotencyOf(input),
     }),
@@ -354,7 +359,7 @@ export const TOOLS: ToolDef[] = [
     description: 'Mark a task done and stamp the completion time.',
     inputSchema: obj({ id: str('Task id') }, ['id']),
     readOnly: false,
-    build: (input) => ({ method: 'POST', path: `/api/v1/tasks/${String(input['id'])}/complete` }),
+    build: (input) => ({ method: 'POST', path: `/api/v1/tasks/${seg(input['id'])}/complete` }),
   },
   {
     name: 'crm_bulk_create',
@@ -398,7 +403,7 @@ export const TOOLS: ToolDef[] = [
     readOnly: false,
     build: (input) => ({
       method: 'DELETE',
-      path: `/api/v1/${pluralOf(input['type'])}/${String(input['id'])}`,
+      path: `/api/v1/${pluralOf(input['type'])}/${seg(input['id'])}`,
     }),
   },
   {
@@ -413,7 +418,7 @@ export const TOOLS: ToolDef[] = [
     readOnly: false,
     build: (input) => ({
       method: 'POST',
-      path: `/api/v1/${pluralOf(input['type'])}/${String(input['id'])}/restore`,
+      path: `/api/v1/${pluralOf(input['type'])}/${seg(input['id'])}/restore`,
     }),
   },
   {
@@ -432,7 +437,7 @@ export const TOOLS: ToolDef[] = [
     readOnly: false,
     build: (input) => ({
       method: 'POST',
-      path: `/api/v1/${pluralOf(input['type'])}/${String(input['id'])}/tags`,
+      path: `/api/v1/${pluralOf(input['type'])}/${seg(input['id'])}/tags`,
       body: { tags: input['tags'] },
     }),
   },
@@ -527,7 +532,7 @@ export const TOOLS: ToolDef[] = [
     readOnly: false,
     build: (input) => ({
       method: 'POST',
-      path: `/api/v1/audit/${String(input['audit_id'])}/revert`,
+      path: `/api/v1/audit/${seg(input['audit_id'])}/revert`,
       idempotencyKey: idempotencyOf(input),
     }),
   },

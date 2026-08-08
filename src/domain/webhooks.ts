@@ -5,6 +5,7 @@ import { assertCan, type Ctx } from './context.ts';
 import { writeAudit } from './store.ts';
 import type { DomainEvent } from './events.ts';
 import type { Db } from '../db/index.ts';
+import { checkDestination } from './net-guard.ts';
 
 export type WebhookRow = {
   id: string;
@@ -168,8 +169,14 @@ const MAX_ATTEMPTS = 5;
 
 export async function flushDeliveries(
   db: Db,
-  options: { timeoutMs?: number; batchSize?: number; fetchImpl?: typeof fetch } = {},
-): Promise<{ attempted: number; delivered: number; failed: number }> {
+  options: {
+    timeoutMs?: number;
+    batchSize?: number;
+    fetchImpl?: typeof fetch;
+    /** Self-hosters delivering to a sibling container can opt back in. */
+    allowPrivateDestinations?: boolean;
+  } = {},
+): Promise<{ attempted: number; delivered: number; failed: number; blocked: number }> {
   const doFetch = options.fetchImpl ?? fetch;
   const rows = db
     .prepare(
@@ -180,6 +187,7 @@ export async function flushDeliveries(
 
   let delivered = 0;
   let failed = 0;
+  let blocked = 0;
 
   for (const row of rows) {
     const hook = db.prepare('SELECT * FROM webhooks WHERE id = ?').get(row.webhook_id) as
@@ -189,6 +197,24 @@ export async function flushDeliveries(
         `UPDATE webhook_deliveries SET status = 'failed', last_error = ? WHERE id = ?`,
       ).run('webhook was deleted', row.id);
       failed++;
+      continue;
+    }
+
+    // Re-checked on every attempt, not once at subscription time: DNS can be
+    // repointed at an internal address after the URL was accepted.
+    const destination = await checkDestination(hook.url, {
+      allowPrivate: options.allowPrivateDestinations ?? false,
+    });
+    if (!destination.allowed) {
+      if (destination.retryable) {
+        markRetry(db, row.id, row.attempts + 1, null, destination.reason);
+        failed++;
+      } else {
+        db.prepare(
+          `UPDATE webhook_deliveries SET status = 'failed', attempts = ?, last_error = ? WHERE id = ?`,
+        ).run(row.attempts + 1, `blocked: ${destination.reason}`, row.id);
+        blocked++;
+      }
       continue;
     }
 
@@ -208,6 +234,9 @@ export async function flushDeliveries(
           'x-open-crm-signature': `sha256=${signature}`,
         },
         body: row.payload,
+        // A public URL must not be able to bounce the request into the private
+        // range via a 302.
+        redirect: 'manual',
         signal: AbortSignal.timeout(options.timeoutMs ?? 10_000),
       });
       if (response.ok) {
@@ -225,7 +254,7 @@ export async function flushDeliveries(
     }
   }
 
-  return { attempted: rows.length, delivered, failed };
+  return { attempted: rows.length, delivered, failed, blocked };
 }
 
 function markRetry(

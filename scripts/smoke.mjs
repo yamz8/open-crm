@@ -91,6 +91,14 @@ async function main() {
       body: JSON.stringify(CREDENTIALS),
     });
     check('first-run setup creates the owner', created.status === 201);
+  } else if (!process.env.OPEN_CRM_TOKEN) {
+    process.stdout.write(
+      '\n  This instance is already set up, so the smoke test cannot create its own owner.\n' +
+        '  Re-run with a token:  OPEN_CRM_TOKEN=ocrm_... node scripts/smoke.mjs --url ' +
+        BASE +
+        '\n  Mint one with:        npm run cli -- token create --name smoke-test\n\n',
+    );
+    process.exit(1);
   } else {
     process.stdout.write('  · instance already set up; using OPEN_CRM_TOKEN\n');
   }

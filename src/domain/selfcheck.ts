@@ -285,6 +285,33 @@ export function selfCheck(
         }),
   });
 
+  const orphanTokens = ctx.db
+    .prepare(
+      `SELECT t.id, t.name,
+              CASE WHEN u.id IS NULL THEN 'creator was deleted' ELSE 'creator is disabled' END AS reason
+       FROM api_tokens t
+       LEFT JOIN users u ON u.id = t.created_by
+       WHERE t.revoked_at IS NULL
+         AND t.created_by IS NOT NULL
+         AND (u.id IS NULL OR u.disabled_at IS NOT NULL)`,
+    )
+    .all() as { id: string; name: string; reason: string }[];
+  checks.push({
+    name: 'token_ownership',
+    status: orphanTokens.length === 0 ? 'pass' : 'warn',
+    message:
+      orphanTokens.length === 0
+        ? 'Every active token belongs to a live account'
+        : `${orphanTokens.length} active token(s) outlived the account that created them`,
+    ...(orphanTokens.length === 0
+      ? {}
+      : {
+          remedy:
+            'These tokens are already refused at authentication. Revoke them with DELETE /api/v1/tokens/{id} to clear the warning.',
+          details: orphanTokens,
+        }),
+  });
+
   const status: CheckStatus = checks.some((c) => c.status === 'fail')
     ? 'fail'
     : checks.some((c) => c.status === 'warn')
