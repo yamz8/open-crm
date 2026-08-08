@@ -104,19 +104,33 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
       - run: npm ci
+
+      # Trusted publishing needs npm >= 11.5.1 to mint the OIDC token; Node 22
+      # ships npm 10.x. Harmless for the token path.
+      - name: Use an npm that supports OIDC
+        run: npm install -g npm@latest
+
       - name: Publish, if npm publishing is configured
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          TRUSTED: ${{ vars.NPM_TRUSTED_PUBLISHING }}
         run: |
-          # The secrets context is not usable in a job-level `if`, so the skip
-          # has to happen here. A release without npm configured is a success,
-          # not a failure — the container image is the primary artifact.
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "NPM_TOKEN is not set; skipping npm publish."
-            echo "See CONTRIBUTING.md → Publishing to npm to enable it."
-            exit 0
+          # The secrets context is not usable in a job-level `if`, so the choice
+          # has to happen here. A release with npm unconfigured is a success, not
+          # a failure — the container image is the primary artifact.
+          if [ "$TRUSTED" = "true" ]; then
+            # OIDC: no token in the environment, and npm attaches provenance
+            # automatically for a public package from a public repository.
+            echo "Publishing via trusted publishing (OIDC)."
+            unset NODE_AUTH_TOKEN
+            npm publish --access public
+          elif [ -n "$NODE_AUTH_TOKEN" ]; then
+            echo "Publishing with NPM_TOKEN."
+            npm publish --provenance --access public
+          else
+            echo "npm publishing is not configured; skipping."
+            echo "See CONTRIBUTING.md -> Publishing to npm."
           fi
-          npm publish --provenance --access public
 
   github-release:
     name: Draft the GitHub release

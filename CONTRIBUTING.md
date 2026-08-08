@@ -105,23 +105,48 @@ ready, and drafts a GitHub release.
 
 ### Publishing to npm
 
-The npm job is skipped until publishing is configured. Pick one:
+The npm job skips with a logged message until this is set up, so releases stay green
+either way. The container image is the primary artifact; npm exists only so that
+`npx open-crm mcp` works.
 
-**Trusted publishing (preferred).** Link the package to this repository's workflow on npmjs.com
-so releases authenticate with a short-lived GitHub OIDC token and there is no long-lived secret
-to leak or rotate. Once configured, drop the `NODE_AUTH_TOKEN` line from the `npm` job in
-`.github/workflows/release.yml`. Check npm's current documentation for the exact setup path.
-
-**Granular access token.** Create one on npmjs.com scoped to this package with publish
-permission and the shortest expiry you can live with, then add it to the repository without it
-touching your shell history or a file:
+**The first publish cannot be automated.** npm's OIDC trusted publishing is configured in a
+package's settings page, which requires the package to already exist — a deliberate guard
+against name hijacking. So a brand-new package has to be published once by a human:
 
 ```bash
-gh secret set NPM_TOKEN --repo yamz8/open-crm   # paste at the prompt, then Ctrl-D
+npm login
+npm publish --access public     # `npm run check` runs first via prepublishOnly
 ```
 
-Either way, `npm publish --provenance` needs `id-token: write` on the job — it is already set.
-Rotate or revoke the token from npmjs.com if it is ever exposed.
+**Then switch the automation to trusted publishing**, which is worth doing because it leaves
+no long-lived credential to leak or rotate:
+
+1. On npmjs.com, open the package → Settings → Trusted Publisher → GitHub Actions, and enter
+   the organisation (`yamz8`), the repository (`open-crm`), and the workflow filename
+   (`release.yml` — filename only, not a path).
+2. Add a repository variable so the workflow takes the OIDC path:
+   ```bash
+   gh variable set NPM_TRUSTED_PUBLISHING --body true --repo yamz8/open-crm
+   ```
+3. Delete the `NPM_TOKEN` secret if one was ever added:
+   ```bash
+   gh secret delete NPM_TOKEN --repo yamz8/open-crm
+   ```
+
+From then on the workflow authenticates with a short-lived GitHub OIDC token, and npm attaches
+provenance automatically — no `--provenance` flag needed for a public package from a public
+repository. This needs npm 11.5.1 or newer, which is why the job upgrades npm before
+publishing; Node 22 ships npm 10.
+
+**If you would rather keep using a token**, create a granular access token on npmjs.com scoped
+to this package with publish permission and the shortest expiry you can live with, then:
+
+```bash
+gh secret set NPM_TOKEN --repo yamz8/open-crm    # paste at the prompt, then Ctrl-D
+```
+
+Reading from the prompt keeps the token out of your shell history and off disk. Revoke it from
+npmjs.com if it is ever exposed.
 
 ## Reporting bugs
 
