@@ -6,6 +6,24 @@ versions may contain breaking changes — those are always listed first.
 
 ## [Unreleased]
 
+### Added
+
+- **CSV import with a column-mapping step.** Pick a file, review how each column maps to a
+  field — matched automatically for the headings other tools emit, and overridable — then
+  import. Unmapped columns can be kept as custom fields in `properties` rather than discarded.
+  Rows are sent in transactional chunks with a per-chunk idempotency key, and rejected rows are
+  reported individually with their line number instead of failing the batch.
+- **CSV export** of whatever the current filters match, following the cursor rather than
+  stopping at the loaded page.
+- **Editing in the web UI.** Detail pages have an Edit button that sends only the fields that
+  changed and passes `If-Match`, so a concurrent edit produces a conflict rather than a silent
+  overwrite.
+
+### Fixed
+
+- Lists stopped at 50 rows while the header reported the full total, hiding every record past
+  the first page. They now follow `next_cursor` behind a Load more button.
+
 ## [0.1.1] — 2026-08-09
 
 ### Changed

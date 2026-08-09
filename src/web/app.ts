@@ -1,5 +1,6 @@
 import { api, query, RequestFailed } from './api.ts';
 import { $, colorFor, h, initials, money, mount, relativeTime, shortDate, toast } from './dom.ts';
+import { CUSTOM_FIELD, guessMapping, parseCsv, rowToRecord, SKIP_COLUMN, toCsv } from './csv.ts';
 
 // -- State --------------------------------------------------------------------
 
@@ -599,9 +600,16 @@ async function listView(config: ListConfig): Promise<HTMLElement> {
           config.emptyNote,
           config.createType
             ? h(
-                'button',
-                { class: 'btn-primary', onclick: () => openCreate(config.createType!) },
-                `+ New`,
+                'div',
+                { style: 'display:flex;gap:8px;justify-content:center' },
+                IMPORT_FIELDS[config.createType]
+                  ? h('button', { onclick: () => openImport(config) }, 'Import CSV')
+                  : null,
+                h(
+                  'button',
+                  { class: 'btn-primary', onclick: () => openCreate(config.createType!) },
+                  `+ New`,
+                ),
               )
             : undefined,
         )
@@ -623,6 +631,10 @@ async function listView(config: ListConfig): Promise<HTMLElement> {
       {},
       pageHead(
         config.title,
+        h('button', { onclick: () => void exportCsv(config) }, 'Export CSV'),
+        config.createType && IMPORT_FIELDS[config.createType]
+          ? h('button', { onclick: () => openImport(config) }, 'Import CSV')
+          : null,
         config.createType
           ? h(
               'button',
@@ -1982,6 +1994,340 @@ function openLogActivity(type: string, id: string): void {
     h('button', { onclick: () => closeModal() }, 'Cancel'),
     h('button', { class: 'btn-primary', onclick: submit }, 'Log'),
   ]);
+}
+
+// -- CSV import and export ----------------------------------------------------
+
+/**
+ * Fields a CSV column can be mapped onto. Deliberately wider than the quick
+ * create form: an import is where the long tail of columns actually shows up.
+ */
+const BULK_CHUNK = 200; // the API's per-request maximum
+
+const IMPORT_FIELDS: Record<string, FieldSpec[]> = {
+  contact: [
+    { name: 'first_name', label: 'First name' },
+    { name: 'last_name', label: 'Last name' },
+    { name: 'email', label: 'Email' },
+    { name: 'phone', label: 'Phone' },
+    { name: 'title', label: 'Job title' },
+    { name: 'lifecycle_stage', label: 'Lifecycle stage' },
+    { name: 'source', label: 'Source' },
+    { name: 'linkedin_url', label: 'LinkedIn URL' },
+    { name: 'description', label: 'Notes' },
+  ],
+  company: [
+    { name: 'name', label: 'Company name' },
+    { name: 'domain', label: 'Domain' },
+    { name: 'industry', label: 'Industry' },
+    { name: 'size', label: 'Size' },
+    { name: 'website', label: 'Website' },
+    { name: 'phone', label: 'Phone' },
+    { name: 'address', label: 'Address' },
+    { name: 'description', label: 'Notes' },
+  ],
+  deal: [
+    { name: 'title', label: 'Deal title' },
+    { name: 'amount', label: 'Amount', hint: 'Whole currency units, e.g. 1500' },
+    { name: 'currency', label: 'Currency' },
+    { name: 'close_date', label: 'Expected close', hint: 'YYYY-MM-DD' },
+    { name: 'description', label: 'Notes' },
+  ],
+  task: [
+    { name: 'title', label: 'Task' },
+    { name: 'description', label: 'Notes' },
+    { name: 'priority', label: 'Priority' },
+    { name: 'due_at', label: 'Due', hint: 'YYYY-MM-DD or an ISO timestamp' },
+  ],
+};
+
+function openImport(config: ListConfig): void {
+  const type = config.createType;
+  const fields = type ? IMPORT_FIELDS[type] : undefined;
+  if (!type || !fields) return;
+
+  const fileInput = h('input', { type: 'file', accept: '.csv,text/csv' });
+
+  openModal(
+    `Import ${config.plural}`,
+    h(
+      'div',
+      {},
+      h(
+        'p',
+        { class: 'subtle', style: 'margin-top:0' },
+        'Choose a CSV file. You will map its columns to fields before anything is written.',
+      ),
+      h('div', { class: 'field' }, fileInput),
+      h(
+        'div',
+        { class: 'faint', style: 'font-size:12px' },
+        'Quoted commas, embedded newlines, and Excel exports are handled. Nothing is imported until you confirm.',
+      ),
+    ),
+    [
+      h('button', { onclick: () => closeModal() }, 'Cancel'),
+      h(
+        'button',
+        {
+          class: 'btn-primary',
+          onclick: async () => {
+            const file = fileInput.files?.[0];
+            if (!file) {
+              toast('Choose a file first', 'error');
+              return;
+            }
+            const parsed = parseCsv(await file.text());
+            if (parsed.headers.length === 0 || parsed.rows.length === 0) {
+              toast('That file has no data rows', 'error');
+              return;
+            }
+            showMappingStep(config, type, fields, parsed);
+          },
+        },
+        'Next',
+      ),
+    ],
+  );
+}
+
+/** Step two: the reason this exists — decide what each column means. */
+function showMappingStep(
+  config: ListConfig,
+  type: string,
+  fields: FieldSpec[],
+  parsed: ReturnType<typeof parseCsv>,
+): void {
+  const mapping: Record<string, string> = {};
+  for (const header of parsed.headers) {
+    mapping[header] = guessMapping(header, fields) ?? SKIP_COLUMN;
+  }
+
+  const guessed = Object.values(mapping).filter((v) => v !== SKIP_COLUMN).length;
+
+  const table = h(
+    'table',
+    {},
+    h(
+      'thead',
+      {},
+      h('tr', {}, h('th', {}, 'CSV column'), h('th', {}, 'First value'), h('th', {}, 'Import as')),
+    ),
+    h(
+      'tbody',
+      {},
+      ...parsed.headers.map((header, i) =>
+        h(
+          'tr',
+          { style: 'cursor:default' },
+          h('td', { style: 'font-weight:550' }, header),
+          h(
+            'td',
+            { class: 'faint', style: 'font-size:12px;max-width:160px;overflow:hidden' },
+            (parsed.rows[0]?.[i] ?? '').slice(0, 40) || '—',
+          ),
+          h(
+            'td',
+            {},
+            h(
+              'select',
+              {
+                onchange: (event: Event) => {
+                  mapping[header] = (event.target as HTMLSelectElement).value;
+                },
+              },
+              h(
+                'option',
+                { value: SKIP_COLUMN, selected: mapping[header] === SKIP_COLUMN },
+                'Skip this column',
+              ),
+              ...fields.map((f) =>
+                h('option', { value: f.name, selected: mapping[header] === f.name }, f.label),
+              ),
+              h('option', { value: CUSTOM_FIELD }, `Custom field "${header}"`),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  openModal(
+    `Map columns — ${parsed.rows.length} row${parsed.rows.length === 1 ? '' : 's'}`,
+    h(
+      'div',
+      {},
+      h(
+        'p',
+        { class: 'subtle', style: 'margin-top:0' },
+        `${guessed} of ${parsed.headers.length} columns matched automatically. Check them, then import.`,
+      ),
+      parsed.ragged > 0
+        ? h(
+            'div',
+            { class: 'badge badge-warn', style: 'margin-bottom:10px' },
+            `${parsed.ragged} row(s) had an unexpected column count and were padded`,
+          )
+        : null,
+      table,
+      h(
+        'div',
+        { class: 'faint', style: 'font-size:12px;margin-top:10px' },
+        "Anything set to a custom field is stored in the record's free-form properties.",
+      ),
+    ),
+    [
+      h('button', { onclick: () => closeModal() }, 'Cancel'),
+      h(
+        'button',
+        {
+          class: 'btn-primary',
+          onclick: () => void runImport(config, type, parsed, mapping),
+        },
+        `Import ${parsed.rows.length}`,
+      ),
+    ],
+  );
+}
+
+/** Step three: write, in chunks, reporting what failed rather than stopping. */
+async function runImport(
+  config: ListConfig,
+  type: string,
+  parsed: ReturnType<typeof parseCsv>,
+  mapping: Record<string, string>,
+): Promise<void> {
+  const records = parsed.rows.map((row) => rowToRecord(parsed.headers, row, mapping));
+  const usable = records.filter((r) => Object.keys(r).length > 0);
+
+  const progress = h('div', { class: 'subtle' }, `Importing 0 of ${usable.length}…`);
+  openModal(
+    'Importing',
+    h('div', {}, h('div', { class: 'loading' }, h('span', { class: 'spinner' })), progress),
+    [],
+  );
+
+  let created = 0;
+  const errors: { row: number; message: string }[] = [];
+  const batchId = `csv-${type}-${Date.now()}`;
+
+  for (let offset = 0; offset < usable.length; offset += BULK_CHUNK) {
+    const chunk = usable.slice(offset, offset + BULK_CHUNK);
+    const result = await guard(() =>
+      api.post(
+        `/${config.plural}/bulk`,
+        { records: chunk, on_error: 'skip' },
+        // Keyed per chunk so a retry after a dropped connection cannot double-import.
+        { 'idempotency-key': `${batchId}-${offset}` },
+      ),
+    );
+    if (!result) break;
+
+    created += result.created;
+    for (const failure of result.errors ?? []) {
+      errors.push({
+        row: offset + failure.index + 2, // +1 for the header, +1 for 1-based rows
+        message: failure.error?.error?.message ?? failure.error?.message ?? 'Rejected',
+      });
+    }
+    progress.textContent = `Importing ${Math.min(offset + BULK_CHUNK, usable.length)} of ${usable.length}…`;
+  }
+
+  openModal(
+    'Import finished',
+    h(
+      'div',
+      {},
+      h('p', { style: 'margin-top:0' }, `Created ${created} of ${usable.length} rows.`),
+      errors.length === 0
+        ? h('div', { class: 'badge badge-ok' }, 'No rows were rejected')
+        : h(
+            'div',
+            {},
+            h(
+              'div',
+              { class: 'badge badge-warn', style: 'margin-bottom:8px' },
+              `${errors.length} row(s) rejected`,
+            ),
+            h(
+              'div',
+              { style: 'max-height:220px;overflow:auto' },
+              ...errors
+                .slice(0, 50)
+                .map((e) =>
+                  h(
+                    'div',
+                    { class: 'check-row' },
+                    h('div', { class: 'mono faint', style: 'min-width:64px' }, `row ${e.row}`),
+                    h('div', { class: 'check-msg' }, e.message),
+                  ),
+                ),
+            ),
+          ),
+    ),
+    [
+      h(
+        'button',
+        {
+          class: 'btn-primary',
+          onclick: () => {
+            closeModal();
+            void render();
+          },
+        },
+        'Done',
+      ),
+    ],
+  );
+}
+
+/** Downloads everything the current filters match, not just the loaded page. */
+async function exportCsv(config: ListConfig): Promise<void> {
+  const params = new URLSearchParams(location.search);
+  toast('Preparing export…');
+
+  const rows: Record<string, unknown>[] = [];
+  let cursor: string | null = null;
+  await guard(async () => {
+    do {
+      const page: any = await api.get(
+        `/${config.plural}${query({
+          q: params.get('q') ?? undefined,
+          sort: params.get('sort') ?? undefined,
+          limit: 200,
+          cursor: cursor ?? undefined,
+          ...Object.fromEntries(
+            (config.filters ?? [])
+              .map((f) => [`filter[${f.name}]`, params.get(f.name) ?? undefined])
+              .filter(([, v]) => v !== undefined),
+          ),
+        })}`,
+      );
+      rows.push(...page.data);
+      cursor = page.next_cursor;
+    } while (cursor && rows.length < 20_000);
+  });
+
+  if (rows.length === 0) {
+    toast('Nothing to export', 'error');
+    return;
+  }
+
+  // Union of keys so custom properties are not silently dropped.
+  const columns = [...new Set(rows.flatMap((r) => Object.keys(r)))].filter(
+    (c) => c !== 'object' && c !== '_label',
+  );
+  const blob = new Blob([toCsv(rows, columns)], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = h('a', {
+    href: url,
+    download: `${config.plural}-${new Date().toISOString().slice(0, 10)}.csv`,
+  });
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  toast(`Exported ${rows.length} ${config.plural}`);
 }
 
 // -- Command palette ----------------------------------------------------------
