@@ -195,6 +195,71 @@ describe('web UI response contract', () => {
     assertFields(info.body.limits, 'limits', ['rate_limit_max', 'rate_limit_window_ms']);
   });
 
+  test('the Load more button can walk the whole list', async () => {
+    // Mirrors listView(): first page at PAGE_SIZE, then follow next_cursor.
+    const first = await h.api('GET', '/api/v1/contacts?limit=2');
+    assertFields(first.body, 'page', ['data', 'has_more', 'next_cursor', 'total']);
+    assert.equal(first.body.has_more, true, 'the fixture must have more than one page');
+    assert.ok(first.body.next_cursor, 'has_more implies a cursor to follow');
+
+    const seen = new Set(first.body.data.map((r: any) => r.id));
+    let cursor: string | null = first.body.next_cursor;
+    let guard = 0;
+    while (cursor) {
+      const page = await h.api(
+        'GET',
+        `/api/v1/contacts?limit=2&cursor=${encodeURIComponent(cursor)}`,
+      );
+      for (const record of page.body.data) {
+        assert.ok(!seen.has(record.id), 'Load more must not repeat a row');
+        seen.add(record.id);
+      }
+      cursor = page.body.next_cursor;
+      assert.ok(++guard < 50, 'cursor walk did not terminate');
+    }
+    assert.equal(seen.size, first.body.total, 'every record is reachable by paging');
+  });
+
+  test('the edit form sends only changed fields, guarded by If-Match', async () => {
+    const created = await createRecord(h, 'contacts', {
+      first_name: 'Editable',
+      last_name: 'Person',
+      email: 'editable@example.com',
+      title: 'Before',
+    });
+
+    // openEdit() diffs against the loaded record and patches just the delta.
+    const patched = await h.api('PATCH', `/api/v1/contacts/${created.id}`, {
+      body: { title: 'After' },
+      headers: { 'if-match': String(created.version) },
+    });
+    assert.equal(patched.status, 200);
+    assert.equal(patched.body.title, 'After');
+    assert.equal(patched.body.first_name, 'Editable', 'untouched fields survive a partial update');
+    assert.equal(patched.body.email, 'editable@example.com');
+
+    // Saving a second time with the stale version must not silently clobber.
+    const stale = await h.api('PATCH', `/api/v1/contacts/${created.id}`, {
+      body: { title: 'Conflicting' },
+      headers: { 'if-match': String(created.version) },
+    });
+    assert.equal(stale.status, 409);
+    assert.ok(stale.body.error.hint.includes('Re-read'));
+  });
+
+  test('clearing a field in the edit form sends null, not empty string', async () => {
+    const created = await createRecord(h, 'contacts', {
+      first_name: 'Clearable',
+      email: 'clearable@example.com',
+      title: 'Has a title',
+    });
+    const cleared = await h.api('PATCH', `/api/v1/contacts/${created.id}`, {
+      body: { title: null },
+    });
+    assert.equal(cleared.status, 200);
+    assert.equal(cleared.body.title, null, 'an emptied input clears the field');
+  });
+
   test('creating from the UI uses the same shapes the forms submit', async () => {
     // Mirrors exactly what openCreate() posts, including the minor-unit conversion.
     const deal = await createRecord(h, 'deals', {

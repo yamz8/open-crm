@@ -485,14 +485,17 @@ const mainCell = (label: string, sub?: string) =>
     ),
   );
 
+const PAGE_SIZE = 50;
+
 async function listView(config: ListConfig): Promise<HTMLElement> {
   const params = new URLSearchParams(location.search);
-  const load = () =>
+  const load = (cursor?: string) =>
     api.get(
       `/${config.plural}${query({
         q: params.get('q') ?? undefined,
         sort: params.get('sort') ?? undefined,
-        limit: 50,
+        limit: PAGE_SIZE,
+        cursor,
         ...Object.fromEntries(
           (config.filters ?? [])
             .map((f) => [`filter[${f.name}]`, params.get(f.name) ?? undefined])
@@ -502,6 +505,15 @@ async function listView(config: ListConfig): Promise<HTMLElement> {
     );
 
   const result = await load();
+
+  let shown = result.data.length;
+  let cursor: string | null = result.next_cursor;
+
+  const countLabel = h(
+    'span',
+    { class: 'subtle', style: 'font-size:12.5px' },
+    `${shown} of ${result.total}`,
+  );
 
   const setParam = (key: string, value: string) => {
     if (value) params.set(key, value);
@@ -540,7 +552,44 @@ async function listView(config: ListConfig): Promise<HTMLElement> {
       ),
     ),
     h('div', { class: 'spacer', style: 'flex:1' }),
-    h('span', { class: 'subtle', style: 'font-size:12.5px' }, `${result.total} total`),
+    countLabel,
+  );
+
+  const rowFor = (record: any) =>
+    h(
+      'tr',
+      { onclick: () => navigate(`/${config.plural}/${record.id}`) },
+      ...config.columns.map((column) => h('td', {}, column.render(record))),
+    );
+
+  const tbody = h('tbody', {}, ...result.data.map(rowFor));
+
+  // Lists used to stop at the first page while the header claimed the full
+  // total, so every record past 50 was invisible. Walk the cursor instead.
+  const footer = h(
+    'div',
+    { style: 'padding:12px 16px;border-top:1px solid var(--border);text-align:center' },
+    h(
+      'button',
+      {
+        onclick: async (event: Event) => {
+          const button = event.currentTarget as HTMLButtonElement;
+          button.disabled = true;
+          button.textContent = 'Loading…';
+          const next = await guard(() => load(cursor ?? undefined));
+          if (next) {
+            for (const record of next.data) tbody.appendChild(rowFor(record));
+            shown += next.data.length;
+            cursor = next.next_cursor;
+            countLabel.textContent = `${shown} of ${next.total}`;
+          }
+          button.disabled = false;
+          button.textContent = 'Load more';
+          if (!cursor) footer.remove();
+        },
+      },
+      'Load more',
+    ),
   );
 
   const table =
@@ -557,23 +606,15 @@ async function listView(config: ListConfig): Promise<HTMLElement> {
             : undefined,
         )
       : h(
-          'table',
+          'div',
           {},
-          h('thead', {}, h('tr', {}, ...config.columns.map((c) => h('th', {}, c.header)))),
           h(
-            'tbody',
+            'table',
             {},
-            ...result.data.map((record: any) =>
-              h(
-                'tr',
-                { onclick: () => navigate(`/${config.plural}/${record.id}`) },
-                ...config.columns.map((column) => {
-                  const value = column.render(record);
-                  return h('td', {}, typeof value === 'string' ? value : value);
-                }),
-              ),
-            ),
+            h('thead', {}, h('tr', {}, ...config.columns.map((c) => h('th', {}, c.header)))),
+            tbody,
           ),
+          cursor ? footer : null,
         );
 
   return shell(
@@ -1034,6 +1075,7 @@ async function detailView(type: string, plural: string, id: string): Promise<HTM
       {},
       pageHead(
         record._label,
+        CREATE_FORMS[type] ? h('button', { onclick: () => openEdit(type, record) }, 'Edit') : null,
         h(
           'button',
           {
@@ -1740,6 +1782,90 @@ const CREATE_FORMS: Record<string, { plural: string; title: string; fields: Fiel
     ],
   },
 };
+
+/**
+ * Editing shares the create form's field list, pre-filled. `If-Match` carries the
+ * version we read, so a concurrent edit by a colleague or an agent returns 409
+ * rather than being silently overwritten.
+ */
+function openEdit(type: string, record: any): void {
+  const spec = CREATE_FORMS[type];
+  if (!spec) return;
+
+  const valueFor = (field: FieldSpec): string => {
+    const raw = record[field.name];
+    if (raw === null || raw === undefined) return '';
+    if (field.name === 'amount') return String(Number(raw) / 100);
+    if (field.type === 'date') return String(raw).slice(0, 10);
+    if (field.type === 'datetime-local') return String(raw).slice(0, 16);
+    return String(raw);
+  };
+
+  const form = h(
+    'form',
+    { id: 'edit-form' },
+    ...spec.fields.map((field) =>
+      h(
+        'div',
+        { class: 'field' },
+        h('label', { for: `edit-${field.name}` }, field.label),
+        field.options
+          ? h(
+              'select',
+              { id: `edit-${field.name}`, name: field.name },
+              ...field.options.map(([value, label]) =>
+                h('option', { value, selected: value === record[field.name] }, label),
+              ),
+            )
+          : h('input', {
+              id: `edit-${field.name}`,
+              name: field.name,
+              type: field.type ?? 'text',
+              value: valueFor(field),
+            }),
+        field.hint
+          ? h('div', { class: 'faint', style: 'font-size:11.5px;margin-top:4px' }, field.hint)
+          : null,
+      ),
+    ),
+  );
+
+  const submit = async () => {
+    const data = Object.fromEntries(new FormData(form as HTMLFormElement)) as Record<
+      string,
+      string
+    >;
+    const body: Record<string, unknown> = {};
+    for (const field of spec.fields) {
+      const value = data[field.name] ?? '';
+      const current = valueFor(field);
+      if (value === current) continue; // send only what actually changed
+      if (field.name === 'amount') body[field.name] = Math.round(Number(value) * 100);
+      else if (field.type === 'datetime-local') {
+        body[field.name] = value ? new Date(value).toISOString() : null;
+      } else body[field.name] = value === '' ? null : value;
+    }
+
+    if (Object.keys(body).length === 0) {
+      closeModal();
+      return;
+    }
+
+    await guard(async () => {
+      await api.patch(`/${spec.plural}/${record.id}`, body, {
+        'if-match': String(record.version),
+      });
+      closeModal();
+      toast('Saved');
+      await render();
+    });
+  };
+
+  openModal(`Edit ${type}`, form, [
+    h('button', { onclick: () => closeModal() }, 'Cancel'),
+    h('button', { class: 'btn-primary', onclick: submit }, 'Save'),
+  ]);
+}
 
 function openCreate(type: string): void {
   const spec = CREATE_FORMS[type];
